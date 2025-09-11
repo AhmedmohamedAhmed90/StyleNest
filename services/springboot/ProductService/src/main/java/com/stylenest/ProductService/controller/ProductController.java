@@ -1,8 +1,10 @@
 package com.stylenest.ProductService.controller;
 
+import com.stylenest.ProductService.dto.ProductRequest;
 import com.stylenest.ProductService.model.Product;
 import com.stylenest.ProductService.service.ProductService;
 import com.stylenest.ProductService.service.MetricsService;
+import com.stylenest.ProductService.service.CategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,9 +16,12 @@ import java.util.List;
 public class ProductController {
     @Autowired
     private ProductService productService;
-    
+
     @Autowired
     private MetricsService metricsService;
+    
+    @Autowired
+    private CategoryService categoryService;
 
     @GetMapping
     public List<Product> getAllProducts() {
@@ -24,9 +29,9 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Product> getProductById(@PathVariable Long id) {
+    public ResponseEntity<Product> getProductById(@PathVariable Integer id) {
         metricsService.incrementProductView();
-        return productService.getProductById(id)
+        return productService.getProductById(id.longValue())
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -37,16 +42,38 @@ public class ProductController {
     }
 
     @PostMapping
-    public Product createProduct(@RequestBody Product product) {
+    public Product createProduct(@RequestBody ProductRequest productRequest) {
+        Product product = new Product();
+        product.setName(productRequest.getName());
+        product.setDescription(productRequest.getDescription());
+        product.setPrice(productRequest.getPrice());
+        product.setStock(productRequest.getStock());
+        
+        // Set category if categoryId is provided
+        if (productRequest.getCategoryId() != null) {
+            categoryService.getCategoryById(productRequest.getCategoryId())
+                    .ifPresent(product::setCategory);
+        }
+        
         return productService.saveProduct(product);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Product> updateProduct(@PathVariable Long id, @RequestBody Product product) {
-        return productService.getProductById(id)
+    public ResponseEntity<Product> updateProduct(@PathVariable Integer id, @RequestBody ProductRequest productRequest) {
+        return productService.getProductById(id.longValue())
                 .map(existingProduct -> {
-                    product.setProductId(existingProduct.getProductId());
-                    return ResponseEntity.ok(productService.saveProduct(product));
+                    existingProduct.setName(productRequest.getName());
+                    existingProduct.setDescription(productRequest.getDescription());
+                    existingProduct.setPrice(productRequest.getPrice());
+                    existingProduct.setStock(productRequest.getStock());
+                    
+                    // Update category if categoryId is provided
+                    if (productRequest.getCategoryId() != null) {
+                        categoryService.getCategoryById(productRequest.getCategoryId())
+                                .ifPresent(existingProduct::setCategory);
+                    }
+                    
+                    return ResponseEntity.ok(productService.saveProduct(existingProduct));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -57,9 +84,9 @@ public class ProductController {
             @RequestParam Integer quantity,
             @RequestParam String orderId,
             @RequestParam String userId) {
-        
+
         boolean success = productService.reserveStock(id, quantity, orderId, userId);
-        
+
         if (success) {
             return ResponseEntity.ok("Stock reserved successfully");
         } else {
@@ -73,9 +100,9 @@ public class ProductController {
             @RequestParam Integer quantity,
             @RequestParam String orderId,
             @RequestParam String userId) {
-        
+
         boolean success = productService.releaseStock(id, quantity, orderId, userId);
-        
+
         if (success) {
             return ResponseEntity.ok("Stock released successfully");
         } else {
@@ -84,8 +111,8 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
-        productService.deleteProduct(id);
+    public ResponseEntity<Void> deleteProduct(@PathVariable Integer id) {
+        productService.deleteProduct(id.longValue());
         return ResponseEntity.noContent().build();
     }
 }
