@@ -22,15 +22,17 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
 
-    public String generateToken(String email, String role) {
-        return Jwts.builder()
-                .setSubject(email)
-                .claim("role", role)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS512)
-                .compact();
-    }
+   public String generateToken(String email, String role, Long userId) {
+    return Jwts.builder()
+            .setSubject(email)
+            .claim("role", role)
+            .claim("userId", userId)  // add userId here
+            .setIssuedAt(new Date())
+            .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
+            .signWith(getSigningKey(), SignatureAlgorithm.HS512)
+            .compact();
+}
+
 
     public String getEmailFromToken(String token) {
         Claims claims = Jwts.parserBuilder()

@@ -10,20 +10,18 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
+
     @Autowired
     private UserService userService;
     @Autowired
     private JwtUtil jwtUtil;
     @Autowired
     private AuthenticationManager authenticationManager;
-    // @Autowired
-    // private PasswordEncoder passwordEncoder;
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
@@ -38,20 +36,23 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
-        new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
         SecurityContextHolder.getContext().setAuthentication(authentication);
+
         User user = userService.findByEmail(request.getEmail()).orElseThrow();
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
-    return ResponseEntity.ok(new JwtResponse(token, user.getUsername(), user.getEmail()));
+
+        // Generate JWT with userId included
+        String token = jwtUtil.generateToken(user.getEmail(), user.getRole(), user.getId());
+
+        return ResponseEntity.ok(new JwtResponse(token, user.getUsername(), user.getEmail(), user.getId()));
     }
 
     @Data
     public static class RegisterRequest {
-    private String username;
-    private String email;
-    private String password;
-        // private String role;
+        private String username;
+        private String email;
+        private String password;
     }
 
     @Data
@@ -65,11 +66,13 @@ public class AuthController {
         private final String token;
         private final String username;
         private final String email;
+        private final Long userId; // Added userId
 
-        public JwtResponse(String token, String username, String email) {
+        public JwtResponse(String token, String username, String email, Long userId) {
             this.token = token;
             this.username = username;
             this.email = email;
+            this.userId = userId;
         }
     }
 }

@@ -61,93 +61,79 @@ public class ProductService {
         productRepository.deleteById(id);
     }
 
-    @Transactional
-    public boolean reserveStock(Integer productId, Integer quantity, String orderId, String userId) {
-        var timer = metricsService.startStockReservationTimer();
+   @Transactional
+public boolean reserveStock(Integer productId, Integer quantity, String orderId, String userId) {
+    var timer = metricsService.startStockReservationTimer();
 
-        try {
-            Optional<Product> productOpt = productRepository.findById(productId.longValue());
-
-            if (productOpt.isEmpty()) {
-                // Publish failed reservation event (only if RabbitMQ is available)
-                try {
-                    eventPublisherService.publishStockReservationEvent(
-                            productId, quantity, orderId, userId, "RESERVE_FAILED"
-                    );
-                } catch (Exception e) {
-                    System.err.println("Failed to publish reservation failed event: " + e.getMessage());
-                }
-                return false;
-            }
-
-            Product product = productOpt.get();
-
-            if (product.getStock() < quantity) {
-                // Publish failed reservation event (only if RabbitMQ is available)
-                try {
-                    eventPublisherService.publishStockReservationEvent(
-                            productId, quantity, orderId, userId, "RESERVE_FAILED"
-                    );
-                } catch (Exception e) {
-                    System.err.println("Failed to publish reservation failed event: " + e.getMessage());
-                }
-                return false;
-            }
-
-            // Reserve stock
-            product.setStock(product.getStock() - quantity);
-            productRepository.save(product);
-
-            // Publish successful reservation event (only if RabbitMQ is available)
-            try {
-                eventPublisherService.publishStockReservationEvent(
-                        productId, quantity, orderId, userId, "RESERVE"
-                );
-
-                // Publish stock update event
-                eventPublisherService.publishStockUpdateEvent(
-                        productId, product.getStock(), quantity, orderId, "STOCK_RESERVED"
-                );
-            } catch (Exception e) {
-                System.err.println("Failed to publish reservation events: " + e.getMessage());
-            }
-
-            return true;
-        } finally {
-            metricsService.recordStockReservationDuration(timer);
-        }
-    }
-
-    @Transactional
-    public boolean releaseStock(Integer productId, Integer quantity, String orderId, String userId) {
+    try {
         Optional<Product> productOpt = productRepository.findById(productId.longValue());
 
         if (productOpt.isEmpty()) {
+            // Publish failed reservation
+            eventPublisherService.publishStockReservationEvent(
+                    productId, quantity, orderId, userId, "RESERVE_FAILED"
+            );
             return false;
         }
 
         Product product = productOpt.get();
 
-        // Release stock
-        product.setStock(product.getStock() + quantity);
-        productRepository.save(product);
-
-        // Publish stock release event (only if RabbitMQ is available)
-        try {
+        if (product.getStock() < quantity) {
+            // Publish failed reservation
             eventPublisherService.publishStockReservationEvent(
-                    productId, quantity, orderId, userId, "RELEASE"
+                    productId, quantity, orderId, userId, "RESERVE_FAILED"
             );
-
-            // Publish stock update event
-            eventPublisherService.publishStockUpdateEvent(
-                    productId, product.getStock(), 0, orderId, "STOCK_RELEASED"
-            );
-        } catch (Exception e) {
-            System.err.println("Failed to publish release events: " + e.getMessage());
+            return false;
         }
 
+        // Reserve stock
+        product.setStock(product.getStock() - quantity);
+        productRepository.save(product);
+
+        // Publish successful reservation
+        eventPublisherService.publishStockReservationEvent(
+                productId, quantity, orderId, userId, "RESERVE_SUCCESS"
+        );
+
+        // Publish stock update (optional, for inventory views/analytics)
+        eventPublisherService.publishStockUpdateEvent(
+                productId, product.getStock(), quantity, orderId, "STOCK_UPDATED"
+        );
+
         return true;
+    } finally {
+        metricsService.recordStockReservationDuration(timer);
     }
+}
+
+
+   @Transactional
+public boolean releaseStock(Integer productId, Integer quantity, String orderId, String userId) {
+    Optional<Product> productOpt = productRepository.findById(productId.longValue());
+
+    if (productOpt.isEmpty()) {
+        return false;
+    }
+
+    Product product = productOpt.get();
+
+    // Release stock
+    product.setStock(product.getStock() + quantity);
+    productRepository.save(product);
+
+    // Publish release reservation
+    eventPublisherService.publishStockReservationEvent(
+            productId, quantity, orderId, userId, "RELEASE"
+    );
+
+    // Publish stock update (optional)
+    eventPublisherService.publishStockUpdateEvent(
+            productId, product.getStock(), 0, orderId, "STOCK_UPDATED"
+    );
+
+    return true;
+}
+
 
     public List<Product> getProductsByCategory(Integer categoryId) {
         return productRepository.findByCategoryCategoryId(categoryId);
