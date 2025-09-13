@@ -31,3 +31,17 @@ C:\Users\ZIAD\Documents\GitHub\StyleNest\services\dotnet\CartService\obj\Debug\n
 C:\Users\ZIAD\Documents\GitHub\StyleNest\services\dotnet\CartService\obj\Debug\net9.0\CartService.pdb
 C:\Users\ZIAD\Documents\GitHub\StyleNest\services\dotnet\CartService\obj\Debug\net9.0\CartService.genruntimeconfig.cache
 C:\Users\ZIAD\Documents\GitHub\StyleNest\services\dotnet\CartService\obj\Debug\net9.0\ref\CartService.dll
+C:\Users\ZIAD\Documents\GitHub\StyleNest\services\dotnet\CartService\bin\Debug\net9.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+C:\Users\ZIAD\Documents\GitHub\StyleNest\services\dotnet\CartService\bin\Debug\net9.0\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\ZIAD\Documents\GitHub\StyleNest\services\dotnet\CartService\bin\Debug\net9.0\Microsoft.IdentityModel.JsonWebTokens.dll
+C:\Users\ZIAD\Documents\GitHub\StyleNest\services\dotnet\CartService\bin\Debug\net9.0\Microsoft.IdentityModel.Logging.dll
+C:\Users\ZIAD\Documents\GitHub\StyleNest\services\dotnet\CartService\bin\Debug\net9.0\Microsoft.IdentityModel.Protocols.dll
+C:\Users\ZIAD\Documents\GitHub\StyleNest\services\dotnet\CartService\bin\Debug\net9.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+C:\Users\ZIAD\Documents\GitHub\StyleNest\services\dotnet\CartService\bin\Debug\net9.0\Microsoft.IdentityModel.Tokens.dll
+C:\Users\ZIAD\Documents\GitHub\StyleNest\services\dotnet\CartService\bin\Debug\net9.0\Pipelines.Sockets.Unofficial.dll
+C:\Users\ZIAD\Documents\GitHub\StyleNest\services\dotnet\CartService\bin\Debug\net9.0\RabbitMQ.Client.dll
+C:\Users\ZIAD\Documents\GitHub\StyleNest\services\dotnet\CartService\bin\Debug\net9.0\StackExchange.Redis.dll
+C:\Users\ZIAD\Documents\GitHub\StyleNest\services\dotnet\CartService\bin\Debug\net9.0\Swashbuckle.AspNetCore.Swagger.dll
+C:\Users\ZIAD\Documents\GitHub\StyleNest\services\dotnet\CartService\bin\Debug\net9.0\Swashbuckle.AspNetCore.SwaggerGen.dll
+C:\Users\ZIAD\Documents\GitHub\StyleNest\services\dotnet\CartService\bin\Debug\net9.0\Swashbuckle.AspNetCore.SwaggerUI.dll
+C:\Users\ZIAD\Documents\GitHub\StyleNest\services\dotnet\CartService\bin\Debug\net9.0\System.IdentityModel.Tokens.Jwt.dll

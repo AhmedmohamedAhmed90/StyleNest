@@ -35,8 +35,13 @@ public class JwtAuthFilter implements WebFilter {
             return chain.filter(exchange);
         }
 
-        // Skip auth endpoints
-        if (path.startsWith("/auth") || path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs") || path.startsWith("/actuator")) {
+        // Skip public endpoints (no JWT required)
+        if (path.startsWith("/auth")
+                || path.startsWith("/swagger-ui")
+                || path.startsWith("/v3/api-docs")
+                || path.startsWith("/actuator")
+                || path.startsWith("/api/products")
+                || path.startsWith("/api/categories")) {
             return chain.filter(exchange);
         }
 

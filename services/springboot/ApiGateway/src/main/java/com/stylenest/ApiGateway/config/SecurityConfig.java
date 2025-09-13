@@ -19,6 +19,7 @@ public class SecurityConfig {
             .authorizeExchange(exchanges -> exchanges
                 .pathMatchers("/auth/**").permitAll()
                 .pathMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                .pathMatchers("/api/products/**", "/api/categories/**").permitAll()
                 .anyExchange().authenticated()
             )
             .securityContextRepository(NoOpServerSecurityContextRepository.getInstance());
