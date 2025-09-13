@@ -169,10 +169,11 @@ public class StockReservationConsumer {
             return;
         }
 
-        boolean allReserved = order.getItems().stream().allMatch(OrderItem::isReserved);
-        if (allReserved) {
-            orderService.updateOrderStatus(oid, OrderStatus.CONFIRMED);
-            log.info("Order {} auto-confirmed (all items reserved)", oid);
-        }
+        // Keep order in CREATED until payment; do not auto-confirm on reservation success
+        // boolean allReserved = order.getItems().stream().allMatch(OrderItem::isReserved);
+        // if (allReserved) {
+        //     orderService.updateOrderStatus(oid, OrderStatus.CONFIRMED);
+        //     log.info("Order {} auto-confirmed (all items reserved)", oid);
+        // }
     }
 }

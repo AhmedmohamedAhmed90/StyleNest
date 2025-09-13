@@ -197,7 +197,6 @@ public class OrderService {
         switch (status) {
             case CONFIRMED -> order.setConfirmedAt(LocalDateTime.now());
             case SHIPPED   -> order.setShippedAt(LocalDateTime.now());
-            case PAID      -> order.setPaidAt(LocalDateTime.now());
             default -> {}
         }
 

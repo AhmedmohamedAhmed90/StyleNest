@@ -37,6 +37,10 @@ public class OrderEventPublisher {
         rabbitTemplate.convertAndSend("order.exchange", "order.created", event);
     }
 
+    public void publishOrderCancelled(OrderCreatedEvent event) {
+        rabbitTemplate.convertAndSend("order.exchange", "order.cancelled", event);
+    }
+
     // Optional – only if you have an exchange/queue bound for status.
     // Keep but do NOT call during creation.
     public void publishOrderStatusChanged(Object statusEvent) {

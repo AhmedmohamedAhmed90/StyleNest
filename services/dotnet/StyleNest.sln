@@ -8,6 +8,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dotnet", "dotnet", "{556E36
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CartService", "services\dotnet\CartService\CartService.csproj", "{37EDCE03-32AA-B320-B02C-002CCE759CBF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PaymentService", "services\dotnet\PaymentService\PaymentService.csproj", "{1D9F6C0F-9F0D-4F3A-9E63-1C6D9E60F6D2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,6 +20,10 @@ Global
 		{37EDCE03-32AA-B320-B02C-002CCE759CBF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{37EDCE03-32AA-B320-B02C-002CCE759CBF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{37EDCE03-32AA-B320-B02C-002CCE759CBF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1D9F6C0F-9F0D-4F3A-9E63-1C6D9E60F6D2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1D9F6C0F-9F0D-4F3A-9E63-1C6D9E60F6D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1D9F6C0F-9F0D-4F3A-9E63-1C6D9E60F6D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1D9F6C0F-9F0D-4F3A-9E63-1C6D9E60F6D2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -25,6 +31,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{556E360E-0AF8-FC21-DDC9-F2861D147525} = {5854FF58-B8C5-05C6-5BF2-ACE42193F22B}
 		{37EDCE03-32AA-B320-B02C-002CCE759CBF} = {556E360E-0AF8-FC21-DDC9-F2861D147525}
+		{1D9F6C0F-9F0D-4F3A-9E63-1C6D9E60F6D2} = {556E360E-0AF8-FC21-DDC9-F2861D147525}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {CB3A30AC-D47C-409E-B1A6-C1D109B7C8EE}

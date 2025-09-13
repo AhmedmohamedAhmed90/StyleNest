@@ -91,6 +91,7 @@ import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.amqp.core.*;
 
 @Configuration
 public class RabbitMQConfig {
@@ -110,5 +111,23 @@ public class RabbitMQConfig {
         f.setConnectionFactory(cf);
         f.setMessageConverter(conv);
         return f;
+    }
+
+    // Declare payment exchange/queue for payment success events
+    @Bean
+    public TopicExchange paymentExchange() {
+        return new TopicExchange("payment.exchange");
+    }
+
+    @Bean
+    public Queue orderPaymentSuccessQueue() {
+        return QueueBuilder.durable("order.payment.success.queue").build();
+    }
+
+    @Bean
+    public Binding bindPaymentSuccess() {
+        return BindingBuilder.bind(orderPaymentSuccessQueue())
+                .to(paymentExchange())
+                .with("payment.success");
     }
 }
