@@ -47,4 +47,14 @@ public class JwtUtil {
     return claims.get("userId").toString();
 }
 
+    public String getRoleFromToken(String token) {
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+        Object role = claims.get("role");
+        return role == null ? null : role.toString();
+    }
+
 }
