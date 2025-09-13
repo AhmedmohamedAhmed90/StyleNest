@@ -2,6 +2,8 @@ package com.stylenest.ProductService.service;
 
 import com.stylenest.ProductService.model.Product;
 import com.stylenest.ProductService.repository.ProductRepository;
+
+import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -92,7 +94,7 @@ public boolean reserveStock(Integer productId, Integer quantity, String orderId,
 
         // Publish successful reservation
         eventPublisherService.publishStockReservationEvent(
-                productId, quantity, orderId, userId, "RESERVE_SUCCESS"
+            productId, quantity, orderId, userId, "RESERVE"   // ← was RESERVE_SUCCESS
         );
 
         // Publish stock update (optional, for inventory views/analytics)

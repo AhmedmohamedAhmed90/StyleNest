@@ -1,82 +1,178 @@
+// // OrderService/event/StockReservationConsumer.java
+// package com.stylenest.OrderService.event;
+
+// import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+// import com.stylenest.OrderService.model.Order;
+// import com.stylenest.OrderService.model.OrderItem;
+// import com.stylenest.OrderService.model.OrderStatus;
+// import com.stylenest.OrderService.repository.OrderRepository;
+// import com.stylenest.OrderService.service.OrderService;
+// import lombok.Data;
+// import lombok.NoArgsConstructor;
+// import lombok.RequiredArgsConstructor;
+// import lombok.extern.slf4j.Slf4j;
+// import org.springframework.amqp.rabbit.annotation.RabbitListener;
+// import org.springframework.stereotype.Service;
+// import org.springframework.transaction.annotation.Transactional;
+
+// import java.util.Optional;
+
+// @Slf4j
+// @Service
+// @RequiredArgsConstructor
+// public class StockReservationConsumer {
+
+//     private final OrderRepository orderRepository;
+//     private final OrderService orderService;
+
+//     @Data
+//     @NoArgsConstructor
+//     @JsonIgnoreProperties(ignoreUnknown = true)
+//     static class StockReservationEventDTO {
+//         private String  orderId;     // ProductService sends String; we’ll parse to Long
+//         private Long    productId;
+//         private Integer quantity;
+//         private String  eventType;   // "RESERVE", "RESERVE_FAILED", "RELEASE"
+//     }
+
+//     @Transactional
+//     @RabbitListener(queues = "stock.reservation.queue")
+//     public void onStockReservation(StockReservationEventDTO evt) {
+//         log.info("stock.reservation received: {}", evt);
+
+//         Long oid = null;
+//         try { oid = Long.valueOf(evt.getOrderId()); } catch (Exception ignore) {}
+//         if (oid == null || evt.getProductId() == null) {
+//             log.warn("Invalid reservation event: {}", evt);
+//             return;
+//         }
+
+//         Optional<Order> maybeOrder = orderRepository.findById(oid);
+//         if (maybeOrder.isEmpty()) {
+//             log.warn("Order {} not found for event {}", oid, evt);
+//             return;
+//         }
+
+//         Order order = maybeOrder.get();
+//         OrderItem item = order.getItems().stream()
+//                 .filter(i -> evt.getProductId().equals(i.getProductId()))
+//                 .findFirst()
+//                 .orElse(null);
+
+//         if (item == null) {
+//             log.warn("Order {} has no item with productId {}", oid, evt.getProductId());
+//             return;
+//         }
+
+//         String type = evt.getEventType() == null ? "" : evt.getEventType().toUpperCase();
+//         switch (type) {
+//             case "RESERVE" -> item.setReserved(true);
+//             case "RESERVE_FAILED", "RELEASE" -> item.setReserved(false);
+//             default -> log.warn("Unknown eventType={} for order {}", type, oid);
+//         }
+
+//         orderRepository.save(order);
+//         log.info("Order {} item productId {} reserved={}", oid, evt.getProductId(), item.isReserved());
+
+//         // Optional: auto-confirm when all items are reserved
+//         boolean allReserved = order.getItems().stream().allMatch(OrderItem::isReserved);
+//         if (allReserved) {
+//             orderService.updateOrderStatus(oid, OrderStatus.CONFIRMED);
+//             log.info("Order {} auto-confirmed because all items reserved", oid);
+//         }
+//     }
+// }
+
+
 package com.stylenest.OrderService.event;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.stylenest.OrderService.model.Order;
 import com.stylenest.OrderService.model.OrderItem;
 import com.stylenest.OrderService.model.OrderStatus;
 import com.stylenest.OrderService.repository.OrderRepository;
 import com.stylenest.OrderService.service.OrderService;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
-@Service
+@Slf4j
+@Component
+@RequiredArgsConstructor
 public class StockReservationConsumer {
 
-    @Autowired
-    private OrderRepository orderRepository;
+    private final OrderRepository orderRepository;
+    private final OrderService orderService;
 
-    @Autowired
-    private OrderService orderService;
+    @Data
+    @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class StockReservationEvent {
+        private String orderId;        // ProductService sends String; we parse to Long
+        private Long productId;
+        private Integer quantity;
+        private String userId;
+        private LocalDateTime timestamp;
+        private String eventType;      // "RESERVE", "RESERVE_FAILED", "RELEASE"
+    }
 
-    @RabbitListener(queues = "stock.reservation.queue")
     @Transactional
-    public void onStockReservationEvent(StockReservationEvent event) {
-        // parse orderId (product published as String)
-        Long orderId;
-        try {
-            orderId = Long.valueOf(event.getOrderId());
-        } catch (Exception ex) {
-            System.err.println("Invalid orderId in event: " + event.getOrderId());
+    @RabbitListener(queues = "stock.reservation.queue")
+    public void onStockReservation(StockReservationEvent evt) {
+        log.info("stock.reservation received: {}", evt);
+
+        Long oid = null;
+        try { oid = Long.valueOf(evt.getOrderId()); } catch (Exception ignore) {}
+        if (oid == null || evt.getProductId() == null) {
+            log.warn("Invalid reservation event: {}", evt);
             return;
         }
 
-        Optional<Order> opt = orderRepository.findById(orderId);
-        if (opt.isEmpty()) {
-            System.err.println("Order not found for id: " + orderId);
+        Optional<Order> maybeOrder = orderRepository.findById(oid);
+        if (maybeOrder.isEmpty()) {
+            log.warn("Order {} not found for event {}", oid, evt);
             return;
         }
 
-        Order order = opt.get();
+        Order order = maybeOrder.get();
+        OrderItem item = order.getItems().stream()
+                .filter(i -> evt.getProductId().equals(i.getProductId()))
+                .findFirst()
+                .orElse(null);
 
-        // Find matching item
-        OrderItem matched = null;
-        for (OrderItem item : order.getItems()) {
-            if (item.getProductId().equals(Long.valueOf(event.getProductId()))) {
-                matched = item;
-                break;
-            }
-        }
-
-        if (matched == null) {
-            System.err.println("No matching item for productId " + event.getProductId() + " in order " + orderId);
+        if (item == null) {
+            log.warn("Order {} has no item with productId {}", oid, evt.getProductId());
             return;
         }
 
-        String evt = event.getEventType() != null ? event.getEventType().toUpperCase() : "";
-
-        if (evt.contains("RESERVE") && !evt.contains("FAILED")) {
-            if (!matched.isReserved()) {
-                matched.setReserved(true);
-                orderRepository.save(order);
-            }
-        } else if (evt.contains("RESERVE_FAILED") || evt.contains("INSUFFICIENT")) {
-            // reservation failed -> cancel order and optionally release any reserved items
-            orderService.updateOrderStatus(orderId, OrderStatus.CANCELLED);
-            // Optionally call ProductService to release already reserved items for this order.
-        } else if (evt.contains("RELEASE")) {
-            if (matched.isReserved()) {
-                matched.setReserved(false);
-                orderRepository.save(order);
-            }
+        String type = evt.getEventType() == null ? "" : evt.getEventType().toUpperCase();
+        switch (type) {
+            case "RESERVE" -> item.setReserved(true);
+            case "RESERVE_FAILED", "RELEASE" -> item.setReserved(false);
+            default -> log.warn("Unknown eventType={} for order {}", type, oid);
         }
 
-        // if all items reserved -> confirm
+        orderRepository.save(order);
+        log.info("Order {} item pid {} reserved={}", oid, evt.getProductId(), item.isReserved());
+
+        // Policy: if any item failed → CANCELLED; if all reserved → CONFIRMED
+        if ("RESERVE_FAILED".equals(type)) {
+            orderService.updateOrderStatus(oid, OrderStatus.CANCELLED);
+            log.info("Order {} cancelled due to reservation failure", oid);
+            return;
+        }
+
         boolean allReserved = order.getItems().stream().allMatch(OrderItem::isReserved);
         if (allReserved) {
-            orderService.updateOrderStatus(orderId, OrderStatus.CONFIRMED);
+            orderService.updateOrderStatus(oid, OrderStatus.CONFIRMED);
+            log.info("Order {} auto-confirmed (all items reserved)", oid);
         }
     }
 }
