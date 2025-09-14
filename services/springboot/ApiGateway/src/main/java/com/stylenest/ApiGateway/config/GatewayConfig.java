@@ -23,6 +23,14 @@ public class GatewayConfig {
                 .route("auth-service", r -> r.path("/auth/**")
                         .filters(f -> f.circuitBreaker(c -> c.setName("authCB")))
                         .uri("lb://AUTHSERVICE"))
+                // Fallback routes for services defined via Config Server. These ensure
+                // the gateway is functional even if Config Server is late at startup.
+                .route("cart-service", r -> r.path("/api/cart/**")
+                        .filters(f -> f.circuitBreaker(c -> c.setName("cartCB")))
+                        .uri("lb://CARTSERVICE"))
+                .route("payment-service", r -> r.path("/api/payments/**")
+                        .filters(f -> f.circuitBreaker(c -> c.setName("paymentCB")))
+                        .uri("lb://PAYMENTSERVICE"))
                 .build();
     }
 }

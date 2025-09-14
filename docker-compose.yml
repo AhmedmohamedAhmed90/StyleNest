@@ -56,6 +56,13 @@ services:
     ports:
       - "8081:8081"
     environment:
+      # Ensure correct behavior even if Config Server isn't ready yet
+      - SERVER_PORT=8081
+      - SPRING_AUTOCONFIGURE_EXCLUDE=org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration,org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration
+      # Expose Prometheus endpoint by default so monitoring works on cold starts
+      - MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=prometheus,health,info
+      - MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED=true
+      - MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED=true
       - SPRING_CONFIG_IMPORT=optional:configserver:http://configserver:8888
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:8761/eureka/
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/productsdb
@@ -72,6 +79,9 @@ services:
     ports:
       - "8082:8082"
     environment:
+      # Ensure metrics and port are correct even if Config Server isn't ready
+      - SERVER_PORT=8082
+      - SPRING_AUTOCONFIGURE_EXCLUDE=org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration,org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration
       - SPRING_CLOUD_CONFIG_URI=http://configserver:8888
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:8761/eureka/
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/stylenest_orders
@@ -90,6 +100,11 @@ services:
     environment:
       - ASPNETCORE_URLS=http://0.0.0.0:5025
       - Redis__Configuration=redis:6379
+      # RabbitMQ connection for cart (checkout publisher + payment success listener)
+      - RabbitMQ__HostName=rabbitmq
+      - RabbitMQ__Port=5672
+      - RabbitMQ__UserName=guest
+      - RabbitMQ__Password=guest
       - Jwt__Secret=c2VjdXJlLWp3dC1rZXktZm9yLXNwcmluZy1ib290LWF1dGgtc2VydmljZXMtMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=
       - spring__application__name=CartService
       - eureka__client__serviceUrl__defaultZone=http://eureka:8761/eureka/
@@ -104,6 +119,14 @@ services:
       - "5080:5080"
     environment:
       - ASPNETCORE_URLS=http://0.0.0.0:5080
+      # RabbitMQ connection for publishing payment events
+      - RabbitMQ__HostName=rabbitmq
+      - RabbitMQ__Port=5672
+      - RabbitMQ__UserName=guest
+      - RabbitMQ__Password=guest
+      - RabbitMQ__Exchange=payment.exchange
+      - RabbitMQ__SuccessRoutingKey=payment.success
+      - RabbitMQ__FailureRoutingKey=payment.failure
       - Jwt__Secret=c2VjdXJlLWp3dC1rZXktZm9yLXNwcmluZy1ib290LWF1dGgtc2VydmljZXMtMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=
       - spring__application__name=PaymentService
       - eureka__client__serviceUrl__defaultZone=http://eureka:8761/eureka/
