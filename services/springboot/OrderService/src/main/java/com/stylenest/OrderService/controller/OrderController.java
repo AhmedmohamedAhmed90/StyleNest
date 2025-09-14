@@ -6,6 +6,8 @@ import com.stylenest.OrderService.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 
 import java.util.List;
 
@@ -24,6 +26,7 @@ public class OrderController {
      */
     @PostMapping
     public ResponseEntity<Order> placeOrder(
+            @Parameter(name = "X-USER-ID", in = ParameterIn.HEADER, required = true, description = "Authenticated user id")
             @RequestHeader("X-USER-ID") Long userId,
             @RequestBody List<OrderItemRequest> items) {
 
@@ -40,6 +43,7 @@ public class OrderController {
      */
     @GetMapping
     public ResponseEntity<List<Order>> getUserOrders(
+            @Parameter(name = "X-USER-ID", in = ParameterIn.HEADER, required = true, description = "Authenticated user id")
             @RequestHeader("X-USER-ID") Long userId) {
 
         if (userId == null) {

@@ -1,6 +1,6 @@
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 
 namespace PaymentService.Rabbit;
@@ -19,11 +19,14 @@ public class RabbitOptions
 public class PaymentEventPublisher : IDisposable
 {
     private readonly RabbitOptions _opt;
-    private readonly IConnection? _conn;
-    private readonly IModel? _ch;
+    private IConnection? _conn;
+    private IModel? _ch;
+    private readonly ILogger<PaymentEventPublisher> _logger;
+    private readonly object _sync = new();
 
-    public PaymentEventPublisher(IConfiguration cfg)
+    public PaymentEventPublisher(IConfiguration cfg, ILogger<PaymentEventPublisher> logger)
     {
+        _logger = logger;
         _opt = new RabbitOptions
         {
             HostName = cfg["RabbitMQ:HostName"] ?? "localhost",
@@ -35,21 +38,41 @@ public class PaymentEventPublisher : IDisposable
             FailureRoutingKey = cfg["RabbitMQ:FailureRoutingKey"] ?? "payment.failure",
         };
 
-        try
+        // Try initial connect (non-fatal). We will also retry lazily on publish.
+        TryEnsureChannel();
+    }
+
+    private void TryEnsureChannel()
+    {
+        if (_ch != null && _ch.IsOpen && _conn != null && _conn.IsOpen) return;
+        lock (_sync)
         {
-            var cf = new ConnectionFactory
+            if (_ch != null && _ch.IsOpen && _conn != null && _conn.IsOpen) return;
+            try
             {
-                HostName = _opt.HostName,
-                Port = _opt.Port,
-                UserName = _opt.UserName,
-                Password = _opt.Password
-            };
-            _conn = cf.CreateConnection("payment-publisher");
-            _ch = _conn.CreateModel();
-            _ch.ExchangeDeclare(_opt.Exchange, ExchangeType.Topic, durable: true, autoDelete: false);
-        }
-        catch
-        {
+                _conn?.Dispose();
+                _ch?.Dispose();
+                var cf = new ConnectionFactory
+                {
+                    HostName = _opt.HostName,
+                    Port = _opt.Port,
+                    UserName = _opt.UserName,
+                    Password = _opt.Password,
+                    AutomaticRecoveryEnabled = true,
+                    TopologyRecoveryEnabled = true,
+                    NetworkRecoveryInterval = TimeSpan.FromSeconds(5)
+                };
+                _conn = cf.CreateConnection("payment-publisher");
+                _ch = _conn.CreateModel();
+                _ch.ExchangeDeclare(_opt.Exchange, ExchangeType.Topic, durable: true, autoDelete: false);
+                _logger.LogInformation("Connected to RabbitMQ at {Host}:{Port} and declared exchange {Exchange}", _opt.HostName, _opt.Port, _opt.Exchange);
+            }
+            catch (Exception ex)
+            {
+                _conn = null;
+                _ch = null;
+                _logger.LogWarning(ex, "RabbitMQ connection unavailable for PaymentEventPublisher; events will be skipped.");
+            }
         }
     }
 
@@ -61,12 +84,24 @@ public class PaymentEventPublisher : IDisposable
 
     private void Publish(string routingKey, object payload)
     {
-        if (_ch == null) return;
+        // Lazy connect/reconnect on demand
+        TryEnsureChannel();
+        if (_ch == null)
+        {
+            _logger.LogWarning("Skipping publish to {RoutingKey} because RabbitMQ channel is not available.", routingKey);
+            return;
+        }
         var bytes = JsonSerializer.SerializeToUtf8Bytes(payload, new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var props = _ch.CreateBasicProperties();
         props.ContentType = "application/json";
         props.DeliveryMode = 2;
         _ch.BasicPublish(_opt.Exchange, routingKey, props, bytes);
+        try
+        {
+            // Log minimal details for traceability
+            _logger.LogInformation("Published payment event to {Exchange} with {RoutingKey}", _opt.Exchange, routingKey);
+        }
+        catch { }
     }
 
     public void Dispose()
@@ -75,4 +110,3 @@ public class PaymentEventPublisher : IDisposable
         try { _conn?.Close(); } catch { }
     }
 }
-

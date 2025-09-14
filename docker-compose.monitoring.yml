@@ -1,0 +1,37 @@
+services:
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - eureka
+      - configserver
+    restart: unless-stopped
+    networks:
+      - stylenest
+
+  grafana:
+    image: grafana/grafana:10.4.5
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - stylenest
+
+networks:
+  stylenest:
+    external: true
+    name: stylenest_stylenest

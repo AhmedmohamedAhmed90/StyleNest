@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PaymentService.Rabbit;
+using Microsoft.Extensions.Logging;
 
 namespace PaymentService.Controllers;
 
@@ -12,10 +13,12 @@ namespace PaymentService.Controllers;
 public class PaymentsController : ControllerBase
 {
     private readonly PaymentEventPublisher _publisher;
+    private readonly ILogger<PaymentsController> _logger;
 
-    public PaymentsController(PaymentEventPublisher publisher)
+    public PaymentsController(PaymentEventPublisher publisher, ILogger<PaymentsController> logger)
     {
         _publisher = publisher;
+        _logger = logger;
     }
 
     public record PaymentRequest(
@@ -44,6 +47,7 @@ public class PaymentsController : ControllerBase
             status = ok ? "SUCCESS" : "FAILURE",
             timestamp = DateTime.UtcNow
         };
+        _logger.LogInformation("Processing payment for order {OrderId} by user {UserId}: status={Status}", req.OrderId, userId, ok ? "SUCCESS" : "FAILURE");
         if (ok) _publisher.PublishSuccess(evt); else _publisher.PublishFailure(evt);
 
         // Note: OrderService can subscribe to payment.exchange to set status PAID.

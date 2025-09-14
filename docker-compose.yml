@@ -1,51 +1,153 @@
-version: '3.8'
+version: '3.9'
 
-services:
-  # MySQL Database for ProductService
-  mysql:
-    image: mysql:8.0
-    container_name: stylenest-mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: productsdb
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    networks:
-      - stylenest-network
-
-  # RabbitMQ Message Broker
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: stylenest-rabbitmq
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-    ports:
-      - "5672:5672"   # AMQP port
-      - "15672:15672" # Management UI
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    networks:
-      - stylenest-network
-
-  # Redis for CartService (for future use)
-  redis:
-    image: redis:7-alpine
-    container_name: stylenest-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - stylenest-network
+networks:
+  stylenest:
 
 volumes:
   mysql_data:
-  rabbitmq_data:
-  redis_data:
+  postgres_data:
 
-networks:
-  stylenest-network:
-    driver: bridge
+services:
+  eureka:
+    build: ./services/springboot/EurekaServer
+    container_name: eureka
+    ports:
+      - "8761:8761"
+    networks: [stylenest]
+
+  configserver:
+    build: ./services/springboot/ConfigServer
+    container_name: configserver
+    ports:
+      - "8888:8888"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka/
+    depends_on: [eureka]
+    networks: [stylenest]
+
+  apigateway:
+    build: ./services/springboot/ApiGateway
+    container_name: apigateway
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://configserver:8888
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:8761/eureka/
+    depends_on: [eureka, configserver]
+    networks: [stylenest]
+
+  authservice:
+    build: ./services/springboot/AuthService
+    container_name: authservice
+    ports:
+      - "8080:8080"
+    environment:
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/stylenest_auth
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - JWT_SECRET=c2VjdXJlLWp3dC1rZXktZm9yLXNwcmluZy1ib290LWF1dGgtc2VydmljZXMtMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=
+    depends_on: [postgres, eureka]
+    networks: [stylenest]
+
+  productservice:
+    build: ./services/springboot/ProductService
+    container_name: productservice
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://configserver:8888
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/productsdb
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=changeme
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+    depends_on: [mysql, rabbitmq, eureka, configserver]
+    networks: [stylenest]
+
+  orderservice:
+    build: ./services/springboot/OrderService
+    container_name: orderservice
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_CLOUD_CONFIG_URI=http://configserver:8888
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/stylenest_orders
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+    depends_on: [postgres, rabbitmq, eureka, configserver]
+    networks: [stylenest]
+
+  cartservice:
+    build: ./services/dotnet/CartService
+    container_name: cartservice
+    ports:
+      - "5025:5025"
+    environment:
+      - ASPNETCORE_URLS=http://0.0.0.0:5025
+      - Redis__Configuration=redis:6379
+      - Jwt__Secret=c2VjdXJlLWp3dC1rZXktZm9yLXNwcmluZy1ib290LWF1dGgtc2VydmljZXMtMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=
+      - spring__application__name=CartService
+      - eureka__client__serviceUrl__defaultZone=http://eureka:8761/eureka/
+      - eureka__instance__nonSecurePort=5025
+    depends_on: [redis, rabbitmq, eureka]
+    networks: [stylenest]
+
+  paymentservice:
+    build: ./services/dotnet/PaymentService
+    container_name: paymentservice
+    ports:
+      - "5080:5080"
+    environment:
+      - ASPNETCORE_URLS=http://0.0.0.0:5080
+      - Jwt__Secret=c2VjdXJlLWp3dC1rZXktZm9yLXNwcmluZy1ib290LWF1dGgtc2VydmljZXMtMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=
+      - spring__application__name=PaymentService
+      - eureka__client__serviceUrl__defaultZone=http://eureka:8761/eureka/
+      - eureka__instance__nonSecurePort=5080
+    depends_on: [rabbitmq, eureka]
+    networks: [stylenest]
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    command: ["--default-authentication-plugin=mysql_native_password"]
+    environment:
+      - MYSQL_ROOT_PASSWORD=changeme
+      - MYSQL_DATABASE=productsdb
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks: [stylenest]
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    networks: [stylenest]
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks: [stylenest]
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks: [stylenest]

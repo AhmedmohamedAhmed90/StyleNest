@@ -130,4 +130,12 @@ public class RabbitMQConfig {
                 .to(paymentExchange())
                 .with("payment.success");
     }
+
+    // Also bind failures to the same queue so the same listener can handle them
+    @Bean
+    public Binding bindPaymentFailure() {
+        return BindingBuilder.bind(orderPaymentSuccessQueue())
+                .to(paymentExchange())
+                .with("payment.failure");
+    }
 }

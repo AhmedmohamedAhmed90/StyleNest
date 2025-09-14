@@ -131,8 +131,10 @@ import com.stylenest.OrderService.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import io.micrometer.core.instrument.MeterRegistry;
 
 import java.time.LocalDateTime;
+import java.time.Duration;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -144,6 +146,9 @@ public class OrderService {
 
     @Autowired
     private OrderEventPublisher eventPublisher;
+
+    @Autowired
+    private MeterRegistry meterRegistry;
 
     /**
      * Create order in CREATED status and publish order.created event.
@@ -185,6 +190,9 @@ public class OrderService {
         );
         eventPublisher.publishOrderCreated(created);
 
+        // Metrics: count order created (Micrometer will export _total)
+        try { meterRegistry.counter("orders_status", "status", "CREATED").increment(); } catch (Exception ignore) {}
+
         return savedOrder;
     }
 
@@ -195,7 +203,17 @@ public class OrderService {
 
         order.setStatus(status);
         switch (status) {
-            case CONFIRMED -> order.setConfirmedAt(LocalDateTime.now());
+            case CONFIRMED -> {
+                LocalDateTime now = LocalDateTime.now();
+                order.setConfirmedAt(now);
+                // Metrics: record processing duration from created -> confirmed
+                try {
+                    if (order.getCreatedAt() != null) {
+                        Duration d = Duration.between(order.getCreatedAt(), now);
+                        meterRegistry.timer("orders_processing_seconds").record(d);
+                    }
+                } catch (Exception ignore) {}
+            }
             case SHIPPED   -> order.setShippedAt(LocalDateTime.now());
             default -> {}
         }
@@ -204,6 +222,9 @@ public class OrderService {
 
         // Optional: if you use status events elsewhere, you can publish here.
         // eventPublisher.publishOrderStatusChanged(updatedOrder);
+
+        // Metrics: count order status change
+        try { meterRegistry.counter("orders_status", "status", status.name()).increment(); } catch (Exception ignore) {}
 
         return updatedOrder;
     }

@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import io.micrometer.core.instrument.MeterRegistry;
 
 @Slf4j
 @Component
@@ -22,6 +23,7 @@ public class PaymentSuccessConsumer {
     private final OrderService orderService;
     private final OrderRepository orderRepository;
     private final OrderEventPublisher eventPublisher;
+    private final MeterRegistry meterRegistry;
 
     @Data
     @NoArgsConstructor
@@ -48,10 +50,12 @@ public class PaymentSuccessConsumer {
         if ("SUCCESS".equals(status)) {
             orderService.updateOrderStatus(oid, OrderStatus.CONFIRMED);
             log.info("Order {} marked CONFIRMED from payment success", oid);
+            try { meterRegistry.counter("orders_payment_events", "status", "SUCCESS").increment(); } catch (Exception ignore) {}
         } else if ("FAILURE".equals(status)) {
             // keep CREATED or set CANCELLED per business rule; here we cancel
             orderService.updateOrderStatus(oid, OrderStatus.CANCELLED);
             log.info("Order {} cancelled due to payment failure", oid);
+            try { meterRegistry.counter("orders_payment_events", "status", "FAILURE").increment(); } catch (Exception ignore) {}
 
             // Publish order.cancelled with items so ProductService can release stock
             Order order = orderRepository.findById(oid).orElse(null);
@@ -72,6 +76,7 @@ public class PaymentSuccessConsumer {
             }
         } else {
             log.warn("Unknown payment status '{}' for order {}", status, oid);
+            try { meterRegistry.counter("orders_payment_events", "status", "UNKNOWN").increment(); } catch (Exception ignore) {}
         }
     }
 }

@@ -17,6 +17,7 @@ public class EurekaRegistration : IHostedService, IDisposable
     private readonly IHttpClientFactory _httpFactory;
     private readonly ILogger<EurekaRegistration> _logger;
     private readonly EurekaOptions _opt;
+    private readonly string _appNameUpper;
     private Timer? _timer;
     private string _instanceId = $"cartservice-{Guid.NewGuid():N}";
 
@@ -28,6 +29,7 @@ public class EurekaRegistration : IHostedService, IDisposable
         var app = cfg["spring:application:name"] ?? cfg["Spring:Application:Name"] ?? "CartService";
         var port = cfg.GetValue<int?>("eureka:instance:nonSecurePort") ?? 5025;
         _opt = new EurekaOptions { DefaultZone = zone, AppName = app, Port = port };
+        _appNameUpper = (_opt.AppName ?? "CartService").ToUpperInvariant();
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -66,7 +68,7 @@ public class EurekaRegistration : IHostedService, IDisposable
                 }
             };
 
-            var resp = await client.PostAsJsonAsync($"apps/{_opt.AppName}", payload, new JsonSerializerOptions(JsonSerializerDefaults.Web), ct);
+            var resp = await client.PostAsJsonAsync($"apps/{_appNameUpper}", payload, new JsonSerializerOptions(JsonSerializerDefaults.Web), ct);
             if (!resp.IsSuccessStatusCode && resp.StatusCode != System.Net.HttpStatusCode.NoContent)
             {
                 _logger.LogWarning("Eureka register returned {Status}", resp.StatusCode);
@@ -88,12 +90,17 @@ public class EurekaRegistration : IHostedService, IDisposable
         {
             var client = _httpFactory.CreateClient("eureka");
             client.BaseAddress = new Uri(_opt.DefaultZone.TrimEnd('/') + "/");
-            var uri = $"apps/{_opt.AppName}/{_instanceId}";
+            var uri = $"apps/{_appNameUpper}/{_instanceId}";
             var req = new HttpRequestMessage(HttpMethod.Put, uri);
             var resp = await client.SendAsync(req);
             if (!resp.IsSuccessStatusCode && resp.StatusCode != System.Net.HttpStatusCode.NoContent)
             {
                 _logger.LogWarning("Eureka heartbeat returned {Status}", resp.StatusCode);
+                if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    _logger.LogInformation("Eureka instance not found; attempting re-registration");
+                    await RegisterAsync(CancellationToken.None);
+                }
             }
         }
         catch (Exception ex)
@@ -115,7 +122,7 @@ public class EurekaRegistration : IHostedService, IDisposable
         {
             var client = _httpFactory.CreateClient("eureka");
             client.BaseAddress = new Uri(_opt.DefaultZone.TrimEnd('/') + "/");
-            var uri = $"apps/{_opt.AppName}/{_instanceId}";
+            var uri = $"apps/{_appNameUpper}/{_instanceId}";
             await client.DeleteAsync(uri);
         }
         catch { }
@@ -126,4 +133,3 @@ public class EurekaRegistration : IHostedService, IDisposable
         _timer?.Dispose();
     }
 }
-

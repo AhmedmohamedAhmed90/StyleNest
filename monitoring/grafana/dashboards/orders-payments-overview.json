@@ -1,0 +1,152 @@
+{
+  "title": "Orders & Payments Overview",
+  "uid": "orders-payments-overview",
+  "schemaVersion": 38,
+  "version": 1,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Payment Success (rate)",
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "rate(orders_payment_events_total{status=\"SUCCESS\"}[5m])",
+          "legendFormat": "success"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Payment Failure (rate)",
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "rate(orders_payment_events_total{status=\"FAILURE\"}[5m])",
+          "legendFormat": "failure"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Payment Events by Status",
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 0,
+        "y": 6
+      },
+      "targets": [
+        {
+          "expr": "sum by (status) (increase(orders_payment_events_total[2m]))",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "OrderService Request Duration (p95)",
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 0,
+        "y": 14
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"spring-actuator\",uri!~\"/actuator/.*\"}[5m])) by (le))",
+          "legendFormat": "p95"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "JVM Memory Used",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 22
+      },
+      "targets": [
+        {
+          "expr": "sum by (job) (jvm_memory_used_bytes)",
+          "legendFormat": "{{job}}"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "RabbitMQ Messages (ready)",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 22
+      },
+      "targets": [
+        {
+          "expr": "sum(rabbitmq_queue_messages_ready)",
+          "legendFormat": "ready"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Orders Confirmed (rate)",
+      "gridPos": {
+        "x": 0,
+        "w": 8,
+        "h": 6,
+        "y": 30
+      },
+      "targets": [
+        {
+          "expr": "sum by (status) (rate(orders_status_total{status=\"CONFIRMED\"}[5m]))",
+          "legendFormat": "confirmed"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Orders Cancelled (rate)",
+      "gridPos": {
+        "x": 8,
+        "w": 8,
+        "h": 6,
+        "y": 30
+      },
+      "targets": [
+        {
+          "expr": "sum by (status) (rate(orders_status_total{status=\"CANCELLED\"}[5m]))",
+          "legendFormat": "cancelled"
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Order Processing Avg (last 5m)",
+      "gridPos": {
+        "x": 0,
+        "w": 16,
+        "h": 8,
+        "y": 36
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(orders_processing_seconds_sum[5m])) / sum(rate(orders_processing_seconds_count[5m]))",
+          "legendFormat": "avg seconds"
+        }
+      ]
+    }
+  ]
+}
