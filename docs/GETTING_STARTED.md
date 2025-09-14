@@ -4,7 +4,7 @@ This guide takes you from zero to a running, observable stack with Docker Compos
 
 ## 1) Prerequisites
 - Docker Desktop (Compose v2)
-- 6–8 GB RAM available for containers
+- 6-8 GB RAM available for containers
 
 ```powershell
 cd C:\Users\ZIAD\Documents\GitHub\StyleNest
@@ -33,8 +33,27 @@ Endpoints (once healthy):
 - RabbitMQ UI: http://localhost:15672 (guest/guest)
 
 Notes
-- PaymentService is configured for Docker networking and auto‑reconnects to RabbitMQ. No extra env needed.
+- PaymentService is configured for Docker networking and auto-reconnects to RabbitMQ. No extra env needed.
 - Gateway forwards to services discovered via Eureka.
+
+## 2) Start the Frontend (Angular)
+- Requirements: Node.js 18+ (recommended LTS) and npm
+- Location: `stylenest-frontend`
+
+Install dependencies (first time):
+```powershell
+cd stylenest-frontend
+npm ci   # or: npm install
+```
+
+Start the dev server with API proxy:
+```powershell
+npm start
+```
+
+- Opens http://localhost:4200
+
+
 
 ## 4) Optional: Start Monitoring (Prometheus + Grafana)
 Start the monitoring overlay attached to the app network:

@@ -30,8 +30,6 @@ public class OrderCreatedListener {
     @Data @NoArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class OrderCreatedDTO {
-        // OrderService may send Long; we’ll accept String (Jackson can coerce),
-        // or change to Object and String.valueOf(...) if you prefer.
         private String orderId;
         private String userId;
         private List<Item> items;
